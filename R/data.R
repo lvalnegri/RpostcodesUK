@@ -4,6 +4,9 @@ NULL
 #' @import sf
 NULL
 
+# TABLES --------------------
+
+## POSTCODES -----------
 #' Postcodes
 #'
 #' A list of all 2,619,057 *Postcode Units* `PCU` in the UK (as of NOV-22: 1,737,670 active, 881,387 terminated), 
@@ -19,16 +22,13 @@ NULL
 #'   \item{\code{usertype}}{ Shows whether the postcode is a small or large user: 0 = small; 1 = large }
 #'   \item{\code{x_lon}}{ The longitude coordinate of the geometric centroid }
 #'   \item{\code{y_lat}}{ The latitude coordinate of the geometric centroid }
-#'   \item{\code{OA11}}{ Output Area ONS code as of Census 2011 (for all for Countries)}
-#'   \item{\code{OA21}}{ Output Area ONS code as of Census 2021 (England and Wales Only)}
-#'   \item{\code{OA}}{ Output Area ONS code: Census 2021 for England and Wales, Census 2011 for N.Ireland and Scotland}
+#'   \item{\code{OA}}{ Output Area ONS code as of Census 2021 (currently England and Wales Only)}
+#'   \item{\code{OA11}}{ Output Area ONS code as of Census 2011 ()}
 #'   \item{\code{PCS}}{ Postcode Sector }
-#'   \item{\code{PCD}}{ Postcode District }
-#'   \item{\code{PCT}}{ Post Town }
-#'   \item{\code{PCA}}{ Postcode Area }
 #'   \item{\code{RGN}}{ Region ONS code (for England only; the other Regions assumed the following pseudo codes: 
 #'                      NIE_RGN = Northern Ireland, SCO_RGN = Scotland, WLS_RGN = Wales) }
 #'   \item{\code{CTRY}}{ Country 3-chars code: ENG = England, NIE = Northern Ireland, SCO = Scotland, WLS = Wales }
+#'   \item{\code{WPZ}}{ Workplace Zone Census 2011 }
 #' }
 #'
 #' @note The postcodes units included are only the ones with an associated grid reference, and not related to a *non-geographical* Postcode Sector.
@@ -38,7 +38,105 @@ NULL
 'postcodes'
 
 
-#' pc_linkage
+## OUTPUT AREAS --------
+#' A list of all 2,619,057 *Postcode Units* `PCU` in the UK (as of NOV-22: 1,737,670 active, 881,387 terminated), 
+#' together with their geographic coordinates (CRS 4326, WGS84), and the corresponding *Output Area* `OA` and current *Postcode Sector* `PCS`.
+#'
+#' @format A data.table with the following columns:
+#' \describe{
+#'   \item{\code{OA}}{ Output Area ONS code: Census 2021 for England and Wales, Census 2011 for N.Ireland and Scotland}
+#'   \item{\code{PCS}}{ Postcode Sector }
+#'   \item{\code{PCD}}{ Postcode District }
+#'   \item{\code{PCT}}{ Post Town }
+#'   \item{\code{PCA}}{ Postcode Area }
+#'   \item{\code{RGN}}{ ONS code for Region (England only; the other Regions assumed the following pseudo codes: 
+#'                      NIE_RGN = Northern Ireland, SCO_RGN = Scotland, WLS_RGN = Wales) }
+#'   \item{\code{RGNd}}{ Description for Region }
+#'   \item{\code{CTRY}}{ Country 3-chars code: ENG = England, NIE = Northern Ireland, SCO = Scotland, WLS = Wales }
+#' }
+#'
+#' For further details, see the [ONS Geoportal](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=name&tags=all(PRD_ONSPD))
+#'
+'output_areas'
+
+
+#' A list of codes and names for all zones related to the Postal hierarchy.
+#'
+#' @format A data.table with the following columns:
+#' \describe{
+#'   \item{\code{type}}{ }
+#'   \item{\code{code}}{  }
+#'   \item{\code{name}}{  }
+#'   \item{\code{ordering}}{  }
+#' }
+#'
+'pzones'
+
+
+## PCS REGIONS -------
+#' Postcode Sectors overlapping Regions
+#'
+#' A list of Postcode Sectors that overlap different Regions, with the Regions involved. 
+#' Notice that some of them even overlap Countries.
+#'
+#' @format A data.table with the following two columns:
+#' \describe{
+#'   \item{`PCS`}{ The Postcode Sector }
+#'   \item{`RGN`}{ The ONS code for the Region }
+#' }
+#'
+'pcs_regions'
+
+
+## PCS LINKAGE -----------
+#' Postcode Sectors Linkage
+#'
+#' A mapping between Postcode Sectors corresponding to the rule of *five chars*, 
+#' and the geographical position of the Postcode Units that currently form(ed) them.
+#'
+#' @format A data.table with the following two columns:
+#' \describe{
+#'   \item{`PCS.old`}{ The actual Postcode Sector corresponding to the rule }
+#'   \item{`PCS`}{ The current Postcode Sector corresponding to its location }
+#' }
+#'
+'pcs_linkage'
+
+
+## PCD LINKAGE ----------
+#' Postcode Districts Linkage
+#'
+#' A mapping between Postcode Districts corresponding to the rule of *four chars*, 
+#' and the geographical position of the Postcode Units that currently form(ed) them.
+#'
+#' @format A data.table with the following two columns:
+#' \describe{
+#'   \item{`PCD.old`}{ The actual Postcode District corresponding to the rule }
+#'   \item{`PCD`}{ The current Postcode District corresponding to its location }
+#' }
+#'
+'pcd_linkage'
+
+
+## MISSING PCS ---------
+#' *Missing* Postcode Sectors (`PCS`)
+#'
+#' The Postcode Sectors in the provided boundaries are built using Census 2021 Output Areas as a basis.
+#' Unfortunately, mostly because the two system are built some output area contains more thanone postcode sector.
+#' This table lists the sectors that are missed from the boundaries, 
+#' and the corresponding postcode Sector that is 
+#'
+#' @format A list including two data.table, \code{PCS} and \code{PCD}, with the following columns for \code{PCS}:
+#' \describe{
+#'   \item{\code{PCS}}{ The missing Postcode Sector }
+#'   \item{\code{PCS.map}}{ The Postcode Sector included at its place }
+#' }
+#'
+'missing_pcs'
+
+
+## MISSING OA ----------
+#' *Missing* Output Areas (`OA`)
 #'
 #' A mapping between Postcode Sectors/Districts, related to terminated Units (but each table contains all records).
 #'
@@ -49,7 +147,30 @@ NULL
 #' }
 #' and similarly for \code{PCD}.
 #'
-'pc_linkage'
+'missing_oa'
+
+
+## PCA TOTALS ----------
+#' Summaries by Postcode Areas (`PCA`)
+#'
+#' A mapping between Postcode Sectors/Districts, related to terminated Units (but each table contains all records).
+#'
+#' @format A list including two data.table, \code{PCS} and \code{PCD}, with the following columns for \code{PCS}:
+#' \describe{
+#'   \item{\code{PCS.old}}{ The actual Postcode Sector corresponding to the rule }
+#'   \item{\code{PCS}}{ The current Postcode Sector corresponding to its location }
+#' }
+#' and similarly for \code{PCD}.
+#'
+'pca_totals'
+
+
+## PCS NON GEO ---------
+#' *Non-Geographics* Postcode Sectors (`PCS`)
+#'
+#' A list of Postcode Sectors linked to: postboxes, processing and mail sorting centres, bulk deliveries, ...
+#'
+'pcs_non_geo'
 
 
 ## NEIGHBOURS ----------
@@ -66,6 +187,7 @@ NULL
 #'
 'neighbours'
 
+# BOUNDARIES ----------------
 
 ## OA ------------------
 #' OA

@@ -17,7 +17,6 @@ if(down){
     download.file(paste0('https://www.arcgis.com/sharing/rest/content/items/', ons_id, '/data'), destfile = tmpf)
     fname <- unzip(tmpf, list = TRUE)
     fname <- fname[order(fname$Length, decreasing = TRUE), 'Name'][1]
-    
     message('Extracting csv file...')
     unzip(tmpf, files = fname, exdir = pc_path, junkpaths = TRUE)
     unlink(tmpf)
@@ -28,11 +27,12 @@ message('Loading ONSPD data...')
 pc <- fread(
         file.path(pc_path, 'ONSPD.csv'), 
         select = c('pcd', 'osgrdind', 'doterm', 'usertype', 'long', 'lat', 'oa11', 'oa21', 'rgn', 'ctry', 'wz11'),
-        col.names = c('PCU', 'osgrdind', 'is_active', 'usertype', 'x_lon', 'y_lat', 'OA', 'OA21', 'RGN', 'CTRY', 'WPZ'),
+        col.names = c('PCU', 'osgrdind', 'is_active', 'usertype', 'x_lon', 'y_lat', 'OA11', 'OA', 'RGN', 'CTRY', 'WPZ'),
         na.string = '',
         key = 'PCU'
 )
-pc[OA21 == '', OA21 := NA]
+# >>>>>>>>> delete following when census 2021 results are published for every country <<<<<<<<<<<
+pc[OA == '', OA := OA11]
 
 message('Building lookalike tables as Table 1 and 3 in User Guide:')
 message(' + Total dataset:')
@@ -79,8 +79,8 @@ message('Deleting records associated witn non-geographic PC Sectors...')
 message(' - Number of OAs before deletion: ', unique(pc[is_active == 1, .(OA)])[,.N])
 ng <- read.csv('./data-raw/csv/pcs_non_geo.csv')
 pc <- pc[!PCS %in% ng$PCS]
-message(' - Number of 2011 OAs after deletion (UK): ', unique(pc[is_active == 1, .(OA)])[,.N])
-message(' - Number of 2021 OAs after deletion (ENG-WLS): ', unique(pc[is_active == 1, .(OA21)])[,.N])
+message(' - Number of 2011 OAs after deletion (UK): ', unique(pc[is_active == 1, .(OA11)])[,.N])
+message(' - Number of 2021 OAs after deletion (ENG-WLS): ', unique(pc[is_active == 1, .(OA)])[,.N])
 
 message('Fixing CTRY and RGN...')
 pc[, CTRY := substr(CTRY, 1, 1)]
@@ -89,30 +89,31 @@ pc <- ctry[pc, on = c(old = 'CTRY')][, old := NULL]
 pc[substr(RGN, 1, 1) != 'E', RGN := paste0(CTRY, '_RGN')]
 
 message('Saving a geographic WGS84 version...')
-pcg <- pc[, .(PCU, x_lon, y_lat, is_active, PCS, OA, OA21, RGN, CTRY, WPZ)]
+pcg <- pc[, .(PCU, x_lon, y_lat, is_active, PCS, OA, OA11, RGN, CTRY, WPZ)]
 pcg <- st_as_sf(pcg, coords = c('x_lon', 'y_lat'), crs = 4326)
 qsave(pcg, file.path(geouk_path, 'postcodes.wgs'), nthreads = 6)
 message('Reprojecting using OSGB36 / British National Grid, epsg 27700...')
 pcg <- pcg |> st_transform(27700)
 qsave(pcg, file.path(geouk_path, 'postcodes.bng'), nthreads = 6)
 
-# you first need to create the OA boundaries for the whole of the UK (see RgeoUK, file `41-output_areas.R`)
-message('Attach a postcode sector to missing OA (258)...')
-bnd.oa <- qread(file.path(bnduk_path, 's00', 'OAgb'), nthreads = 6)
-oas <- fread('./data-raw/csv/OA_LSOA_MSOA.csv', select = 'OA')
-yn11 <- oas[!OA %in% unique(pc[is_active == 1, OA])][order(OA)]
+message('Attach a postcode sector to missing OA11 (258)...')
+bnd.oa <- qread(file.path(bnduk_path, 's00', 'OAgb'), nthreads = 6) |> setnames('OA', 'OA11')
+oas <- fread('./data-raw/csv/OA_LSOA_MSOA.csv', select = 'OA', col.names = 'OA11')
+yn11 <- oas[!OA11 %in% unique(pc[is_active == 1, OA11])][, .(OA = OA11)][order(OA)]
 pcgn <- pcg |> dplyr::filter(is_active == 1)
-y <- st_nearest_feature(bnd.oa |> subset(OA %in% yn11$OA), pcgn)
+y <- st_nearest_feature(bnd.oa |> subset(OA11 %in% yn11$OA), pcgn)
 yn11 <- data.table(census = 2011, yn11, pcgn[y,] |> subset(select = PCS) |> st_drop_geometry())
 
 message('Attach a postcode sector to missing OA21 (24)...')
-bnd.oa <- qread(file.path(bnduk_path, 's00', 'OA21gb'), nthreads = 6)
-oas <- fread('./data-raw/csv/OA21_LSOA21_MSOA21.csv', select = 'OA21')
-yn21 <- oas[!OA21 %in% unique(pc[is_active == 1, OA21])][order(OA21)]
+bnd.oa <- qread(file.path(bnduk_path, 's00', 'OA21gb'), nthreads = 6) |> setnames('OA21', 'OA')
+oas <- fread('./data-raw/csv/OA21_LSOA21_MSOA21.csv', select = 'OA21', col.names = 'OA')
+yn21 <- oas[!OA %in% unique(pc[is_active == 1, OA])][order(OA)]
 pcgn <- pcg |> dplyr::filter(is_active == 1)
-y <- st_nearest_feature(bnd.oa |> subset(OA21 %in% yn21$OA21), pcgn)
+y <- st_nearest_feature(bnd.oa |> subset(OA %in% yn21$OA), pcgn)
 yn21 <- data.table(2021, yn21, pcgn[y,] |> subset(select = PCS) |> st_drop_geometry())
-fwrite(rbindlist(list(yn11, yn21), use.names = FALSE)[order(census, OA)], './data-raw/csv/missing_OAs.csv')
+# >>>>>>>>> delete following when census 2021 results are published for every country <<<<<<<<<<<
+yn21 <- rbindlist(list( yn21, yn11[substr(OA, 1, 1) %in% c('N', 'S')][, census := 2021] ), use.names = FALSE)
+fwrite(rbindlist(list(yn11, yn21), use.names = FALSE)[order(census, OA)], './data-raw/csv/missing_oa.csv')
 
 message('\nBuilding OA-PCS lookups...')
 ypi <- pc[is_active == 1, .N, .(OA, PCS, RGN)][order(OA, -N)]
@@ -128,14 +129,18 @@ for(xp in unique(ypn$PCS)){
         }
     }
 }
-yp <- rbindlist(list( yp, unique(yp[PCS %chin% yn11$PCS, .(PCS, RGN)])[yn11, on = 'PCS'][, .(OA, PCS, RGN)] ))[order(OA)]
+yp <- rbindlist(list( yp, unique(yp[PCS %chin% yn21$PCS, .(PCS, RGN)])[yn21, on = 'PCS'][, .(OA, PCS, RGN)] ))[order(OA)]
 ypk <- yp[, .(OA, PCS)]
 ypk[, PCD := gsub(' .*', '', substr(PCS, 1, 4)) ]
 ypk[, PCA := sub('[0-9]', '', substr(PCS, 1, gregexpr("[[:digit:]]", PCS)[[1]][1] - 1) ) ]
 fwrite(ypk[, .(OA, PCS)], './data-raw/csv/OA_PCS.csv')
 fwrite(ypk[, .(OA, PCD)], './data-raw/csv/OA_PCD.csv')
 fwrite(ypk[, .(OA, PCA)], './data-raw/csv/OA_PCA.csv')
-fwrite(pc[is_active & !PCS %chin% unique(ypk$PCS)], './data-raw/csv/missing_PCS.csv')
+fwrite(pc[is_active & !PCS %chin% unique(ypk$PCS)], './data-raw/csv/missing_pcs.csv')
+fwrite(
+    unique(pc[PCS %chin% pc[is_active == 1, .N, .(PCS, RGN)][, .N, PCS][ N > 1, PCS], .(PCS, RGN)][order(PCS)]),
+    './data-raw/csv/pcs_countries.csv'
+)
 
 message('Adding correct order to PC Districts and save as csv file...')
 pcd <- unique(ypk[, .(PCD)])[order(PCD)]
@@ -161,32 +166,19 @@ pcsa <- unique(ypk[, .(PCS.old = PCS, PCS)])
 pcst <- pc[is_active == 0, .(PCU, PCS, PCS.old = gsub(' .*', '', substr(PCU, 1, 5)))
             ][!PCS.old %in% pcsa$PCS][, .N, .(PCS.old, PCS)][order(PCS.old, -N)]
 pcst <- pcst[pcst[, .I[which.max(N)], PCS.old]$V1][, N := NULL]
-fwrite(rbindlist(list( pcsa, pcst ))[order(PCS.old)], './data-raw/csv/PCS_linkage.csv')
+fwrite(rbindlist(list( pcsa, pcst ))[order(PCS.old)], './data-raw/csv/pcs_linkage.csv')
 pcda <- unique(ypk[, .(PCD.old = PCD, PCD)])
 pcdt <- ypk[, .(OA, PCD)
            ][pc[is_active == 0, .(PCU, OA)], on = 'OA'
              ][, PCD.old := gsub(' .*', '', substr(PCU, 1, 4))
                ][!PCD.old %in% pcda$PCD][, .N, .(PCD.old, PCD)][order(PCD.old, -N)]
 pcdt <- pcdt[pcdt[, .I[which.max(N)], PCD.old]$V1][, N := NULL]
-fwrite(rbindlist(list( pcda, pcdt ))[order(PCD.old)], './data-raw/csv/PCD_linkage.csv')
-
-message('Adding PCS/D/T/A...')
-yt <- fread('./data-raw/csv/OA_PCD.csv')
-pc <- yt[pc, on = 'OA']
-yt <- fread('./data-raw/csv/PCD_PCT.csv', select = 1:2)
-pc <- yt[pc, on = 'PCD']
-yt <- fread('./data-raw/csv/OA_PCA.csv')
-pc <- yt[pc, on = 'OA']
+fwrite(rbindlist(list( pcda, pcdt ))[order(PCD.old)], './data-raw/csv/pcd_linkage.csv')
 
 message('Recoding char columns as factors...')
-setcolorder(pc, c('PCU', 'is_active', 'usertype', 'x_lon', 'y_lat', 'OA', 'OA21', 'PCS', 'PCD', 'PCT', 'PCA', 'RGN', 'CTRY', 'WPZ'))
-cols <- c('OA', 'OA21', 'PCS', 'RGN', 'CTRY', 'WPZ')
+setcolorder(pc, c('PCU', 'is_active', 'usertype', 'x_lon', 'y_lat', 'OA', 'OA11',, 'PCS',, 'PCS',CTRY', 'WPZ'))'RGN', 'CTRY''RG'RGN', 'CTRY'
+cols <- c('OA', 'OA11', 'PCS', 'PCS', 'CTRY', 'WPZ')'RGN', 'CTRY','RGN', 'CTRY',
 pc[, (cols) := lapply(.SD, factor), .SDcols = cols]
-
-message('Working with OA codes...')
-setnames(pc, 'OA', 'OA11')
-pc[, OA := OA21][is.na(OA), OA := OA11]
-setcolorder(pc, c('PCU', 'is_active', 'usertype', 'x_lon', 'y_lat', 'OA'))
 
 message('Saving postcodes...')
 setorderv(pc, c('is_active', 'CTRY', 'RGN', 'PCS', 'OA', 'PCU'), c(-1, rep(1, 5)))
