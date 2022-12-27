@@ -176,8 +176,8 @@ pcdt <- pcdt[pcdt[, .I[which.max(N)], PCD.old]$V1][, N := NULL]
 fwrite(rbindlist(list( pcda, pcdt ))[order(PCD.old)], './data-raw/csv/pcd_linkage.csv')
 
 message('Recoding char columns as factors...')
-setcolorder(pc, c('PCU', 'is_active', 'usertype', 'x_lon', 'y_lat', 'OA', 'OA11',, 'PCS',, 'PCS',CTRY', 'WPZ'))'RGN', 'CTRY''RG'RGN', 'CTRY'
-cols <- c('OA', 'OA11', 'PCS', 'PCS', 'CTRY', 'WPZ')'RGN', 'CTRY','RGN', 'CTRY',
+setcolorder(pc, c('PCU', 'is_active', 'usertype', 'x_lon', 'y_lat', 'OA', 'OA11', 'PCS'))
+cols <- c('OA', 'OA11', 'PCS', 'RGN', 'CTRY', 'WPZ')
 pc[, (cols) := lapply(.SD, factor), .SDcols = cols]
 
 message('Saving postcodes...')

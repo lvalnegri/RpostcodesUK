@@ -1,5 +1,5 @@
 ########################################
-# UK POSTCODES * 12 - UPRN AddressBase #
+# UK POSTCODES * 16 - UPRN AddressBase #
 ########################################
 
 Rfuns::load_pkgs('data.table', 'fst', 'sf')

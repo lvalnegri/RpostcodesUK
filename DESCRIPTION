@@ -12,21 +12,22 @@ URL: https://github.com/lvalnegri/RpostcodesUK
 BugReports: https://github.com/lvalnegri/RpostcodesUK/issues
 Depends: R (>= 4.1)
 Imports:
-    data.table,
-    leaflet,
-    Rfuns,
-    sf,
-    utils
+  concaveman,
+  data.table,
+  leaflet,
+  Rfuns,
+  sf
 Suggests:
-    knitr,
-    parallel,
-    qs,
-    rmapshaper,
-    rmarkdown,
-    rvest
+  knitr,
+  parallel,
+  qs,
+  rmapshaper,
+  rmarkdown,
+  rvest
 Remotes:
-    lvalnegri/Rfuns
+  lvalnegri/Rfuns
 LazyData: true
+LazyDataCompression:gzip
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.1
 VignetteBuilder: knitr

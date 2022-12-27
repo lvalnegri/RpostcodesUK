@@ -13,15 +13,14 @@ for(fn in c('missing_oa', 'missing_pcs', 'pcs_regions', 'pcs_linkage', 'pcd_link
 
 fn <- 'pcs_non_geo'
 assign(fn, fread('./data-raw/csv/pcs_non_geo.csv', sep = '\n'))
-save(list = fn, file = 'data/pcs_non_geo.rda', version = 3, compress = 'gzip')
+save(list = fn, file = file.path('data', 'pcs_non_geo.rda'), version = 3, compress = 'gzip')
 
 # output_areas
 ys <- fread(paste0('./data-raw/csv/OA_PCS.csv'), key = 'OA')
 yd <- fread(paste0('./data-raw/csv/OA_PCD.csv'), key = 'OA')
 yt <- fread(paste0('./data-raw/csv/PCD_PCT.csv'))
 ya <- fread(paste0('./data-raw/csv/OA_PCA.csv'), key = 'OA')
-y <- ya[yt[, .(PCD, PCT)][yd[ys], on = 'PCD'], on = 'OA'] |> 
-setorderv(y, c('PCA', 'PCT', 'PCD', 'PCS', 'OA'))
+y <- ya[yt[, .(PCD, PCT)][yd[ys], on = 'PCD'], on = 'OA'] |>setorderv(c('PCA', 'PCT', 'PCD', 'PCS', 'OA'))
 yr <- fread(
         'https://www.arcgis.com/sharing/rest/content/items/efda0d0e14da4badbd8bdf8ae31d2f00/data',
         select = 1:3,

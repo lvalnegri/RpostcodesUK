@@ -6,6 +6,7 @@ Rfuns::load_pkgs('data.table')
 load_all()
 
 # OA boundaries: EW 2021 ( +  = ), NS 2011 ( +  = )
+message('Processing OA')
 y1 <- qs::qread(file.path(Rfuns::bnduk_path, 's00', 'OA'), nthreads = 6) |> 
         subset(substr(OA, 1, 1) %in% c('N', 'S'))
 y2 <- qs::qread(file.path(Rfuns::bnduk_path, 's00', 'OA21'), nthreads = 6) |> 
