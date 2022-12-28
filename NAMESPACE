@@ -3,6 +3,7 @@
 export(pcu_clean)
 export(pcu_coords)
 export(pcu_map)
+export(pcus_clean)
 import(Rfuns)
 import(concaveman)
 import(data.table)

@@ -2,7 +2,7 @@
 % Please edit documentation in R/pcu_clean.R
 \name{pcu_clean}
 \alias{pcu_clean}
-\title{Check a character string is a UK valid postcode, then convert it to a 7-char format}
+\title{Format string as a UK postcode}
 \usage{
 pcu_clean(x)
 }
@@ -13,6 +13,9 @@ pcu_clean(x)
 a 7-char string
 }
 \description{
+Check a character string is in a UK valid postcode format, then convert it to a 7-char format
+}
+\details{
 The UK postcode system is hierarchical, the top level being "Postcode Area" (PCA) identified by 1 or 2 alphabetical character.
 The next level is the "Postcode District" (PCD), also commonly known as the "outcode", and can take on several different formats, and anywhere from 2 to 4 alphanumeric characters long.
 Next comes the Postcode Sector" (PCS), always identified by a single number, then finally the "unit", always formed by two alphabetical characters.
