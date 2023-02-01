@@ -39,6 +39,8 @@ NULL
 
 
 ## OUTPUT AREAS --------
+#' Output Areas
+#' 
 #' A list of all 2,619,057 *Postcode Units* `PCU` in the UK (as of NOV-22: 1,737,670 active, 881,387 terminated), 
 #' together with their geographic coordinates (CRS 4326, WGS84), and the corresponding *Output Area* `OA` and current *Postcode Sector* `PCS`.
 #'
@@ -59,15 +61,56 @@ NULL
 #'
 'output_areas'
 
-
-#' A list of codes and names for all zones related to the Postal hierarchy.
+## POSTAL --------
+#' Postal Zones Lookups
+#' 
+#' A hierarchical lookups between Postal Zones, from `PCS` to `PCD` to `PCT` and `PCA`.
 #'
 #' @format A data.table with the following columns:
 #' \describe{
-#'   \item{\code{type}}{ }
-#'   \item{\code{code}}{  }
-#'   \item{\code{name}}{  }
-#'   \item{\code{ordering}}{  }
+#'   \item{\code{PCS}}{ Postcode Sector }
+#'   \item{\code{PCD}}{ Postcode District }
+#'   \item{\code{PCT}}{ Post Town }
+#'   \item{\code{PCA}}{ Postcode Area }
+#'   \item{\code{RGN}}{ ONS code for Region (England only; the other Regions assumed the following pseudo codes: 
+#'                      NIE_RGN = Northern Ireland, SCO_RGN = Scotland, WLS_RGN = Wales) }
+#' }
+#'
+'postal'
+
+
+## POSTAL ZONES --------
+#' Postal Zones List
+#' 
+#' A list of codes and names for all Zones related to the Postal hierarchy.
+#'
+#' @format A data.table with the following columns:
+#' \describe{
+#'   \item{\code{type}}{ the acronym for the level of the hierarchy }
+#'   \item{\code{code}}{ the id for the Zone }
+#'   \item{\code{name}}{ the name for the Zone  }
+#'   \item{\code{ordering}}{ The order of the Zone in reporting  }
+#'   \item{\code{type}}{ The geographic hierarchy the Zone belongs to }
+#'   \item{\code{code}}{ The identifier for the Area }
+#'   \item{\code{name}}{ The name for the Zone }
+#'   \item{\code{parent}}{ The code of the Zone in which the current zone is contained as immediate level.
+#'                         For Postcode Areas (`PCA`) the parent hasss been set as the Regions,
+#'                         but notice that some Zone belongs to more than one Region, see the table `pcs_regions`)
+#'   }
+#'   \item{\code{CTRY}}{ The Country the Zone belongs to 
+#'                          (notice that some Zone belongs to more than one Country, see the table `pcs_countries`)}
+#'   \item{\code{perimeter}}{ The perimeter }
+#'   \item{\code{area}}{ The area }
+#'   \item{\code{x_lon}}{ The longitude coordinate of the geometric centroid }
+#'   \item{\code{y_lat}}{ The latitude coordinate of the geometric centroid }
+#'   \item{\code{px_lon}}{ The longitude coordinate of the *pole of inaccessibility* }
+#'   \item{\code{py_lat}}{ The latitude coordinate of the *pole of inaccessibility* }
+#'   \item{\code{wx_lon}}{ The longitude coordinate of the *population weighted* centroid }
+#'   \item{\code{wy_lat}}{ The latitude coordinate of the *population weighted* centroid }
+#'   \item{\code{bb_xmin}}{ The minimum longitude coordinate of the *bounding box* for the Zone }
+#'   \item{\code{bb_ymin}}{ The minimum latitude coordinate of the *bounding box* for the Zone }
+#'   \item{\code{bb_xmax}}{ The maximum longitude coordinate of the *bounding box* for the Zone }
+#'   \item{\code{bb_ymax}}{ The maximum latitude coordinate of the *bounding box* for the Zone }
 #' }
 #'
 'pzones'
@@ -261,3 +304,215 @@ NULL
 #'       and the [ONS Postcode Directory](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=-created&tags=all(PRD_ONSPD)) as a basis.
 #'
 'PCA'
+
+# ADDRESSES / UPRN ----------
+
+## U1 ------------------
+#' U1
+#'
+#' This dataset contains the locations and correspondent Postcode Units (`PCU`) of all *Unique Property Reference Number* (`UPRN`) 
+#' in the Region *North East* (ONS code: `E12000001`)
+#'
+#' @format A data.table with the following columns:
+#' \describe{
+#'   \item{\code{ PCU }}{ The Postcode Unit the Property is included into }
+#'   \item{\code{ x_lon }}{ The longitude of the Property }
+#'   \item{\code{ y_lat }}{ The latitude of the Property }
+#'   \item{\code{ N }}{ The count of references for the location }
+#' }
+#'
+#' For further details, see the either the [NSUL](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=-created&tags=all(PRD_NSUL))
+#' of the [ONSUD](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=-created&tags=all(PRD_ONSUD)) product.
+#'
+'U1'
+
+## U2 ------------------
+#' U2
+#'
+#' This dataset contains the locations and correspondent Postcode Units (`PCU`) of all *Unique Property Reference Number* (`UPRN`) 
+#' in the Region *North West* (ONS code: `E12000002`)
+#'
+#' @format A data.table with the following columns:
+#' \describe{
+#'   \item{\code{ PCU }}{ The Postcode Unit the Property is included into }
+#'   \item{\code{ x_lon }}{ The longitude of the Property }
+#'   \item{\code{ y_lat }}{ The latitude of the Property }
+#'   \item{\code{ N }}{ The count of references for the location }
+#' }
+#'
+#' For further details, see the either the [NSUL](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=-created&tags=all(PRD_NSUL))
+#' of the [ONSUD](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=-created&tags=all(PRD_ONSUD)) product.
+#'
+'U2'
+
+## U3 ------------------
+#' U3
+#'
+#' This dataset contains the locations and correspondent Postcode Units (`PCU`) of all *Unique Property Reference Number* (`UPRN`) 
+#' in the Region *Yorkshire and The Humber* (ONS code: `E12000003`)
+#'
+#' @format A data.table with the following columns:
+#' \describe{
+#'   \item{\code{ PCU }}{ The Postcode Unit the Property is included into }
+#'   \item{\code{ x_lon }}{ The longitude of the Property }
+#'   \item{\code{ y_lat }}{ The latitude of the Property }
+#'   \item{\code{ N }}{ The count of references for the location }
+#' }
+#'
+#' For further details, see the either the [NSUL](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=-created&tags=all(PRD_NSUL))
+#' of the [ONSUD](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=-created&tags=all(PRD_ONSUD)) product.
+#'
+'U3'
+
+## U4 ------------------
+#' U4
+#'
+#' This dataset contains the locations and correspondent Postcode Units (`PCU`) of all *Unique Property Reference Number* (`UPRN`) 
+#' in the Region *East Midlands* (ONS code: `E12000004`)
+#'
+#' @format A data.table with the following columns:
+#' \describe{
+#'   \item{\code{ PCU }}{ The Postcode Unit the Property is included into }
+#'   \item{\code{ x_lon }}{ The longitude of the Property }
+#'   \item{\code{ y_lat }}{ The latitude of the Property }
+#'   \item{\code{ N }}{ The count of references for the location }
+#' }
+#'
+#' For further details, see the either the [NSUL](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=-created&tags=all(PRD_NSUL))
+#' of the [ONSUD](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=-created&tags=all(PRD_ONSUD)) product.
+#'
+'U4'
+
+## U5 ------------------
+#' U5
+#'
+#' This dataset contains the locations and correspondent Postcode Units (`PCU`) of all *Unique Property Reference Number* (`UPRN`) 
+#' in the Region *West Midlands* (ONS code: `E12000005`)
+#'
+#' @format A data.table with the following columns:
+#' \describe{
+#'   \item{\code{ PCU }}{ The Postcode Unit the Property is included into }
+#'   \item{\code{ x_lon }}{ The longitude of the Property }
+#'   \item{\code{ y_lat }}{ The latitude of the Property }
+#'   \item{\code{ N }}{ The count of references for the location }
+#' }
+#'
+#' For further details, see the either the [NSUL](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=-created&tags=all(PRD_NSUL))
+#' of the [ONSUD](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=-created&tags=all(PRD_ONSUD)) product.
+#'
+'U5'
+
+## U6 ------------------
+#' U6
+#'
+#' This dataset contains the locations and correspondent Postcode Units (`PCU`) of all *Unique Property Reference Number* (`UPRN`) 
+#' in the Region *East of England* (ONS code: `E12000006`)
+#'
+#' @format A data.table with the following columns:
+#' \describe{
+#'   \item{\code{ PCU }}{ The Postcode Unit the Property is included into }
+#'   \item{\code{ x_lon }}{ The longitude of the Property }
+#'   \item{\code{ y_lat }}{ The latitude of the Property }
+#'   \item{\code{ N }}{ The count of references for the location }
+#' }
+#'
+#' For further details, see the either the [NSUL](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=-created&tags=all(PRD_NSUL))
+#' of the [ONSUD](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=-created&tags=all(PRD_ONSUD)) product.
+#'
+'U6'
+
+## U7 ------------------
+#' U7
+#'
+#' This dataset contains the locations and correspondent Postcode Units (`PCU`) of all *Unique Property Reference Number* (`UPRN`) 
+#' in the Region *london* (ONS code: `E12000007`)
+#'
+#' @format A data.table with the following columns:
+#' \describe{
+#'   \item{\code{ PCU }}{ The Postcode Unit the Property is included into }
+#'   \item{\code{ x_lon }}{ The longitude of the Property }
+#'   \item{\code{ y_lat }}{ The latitude of the Property }
+#'   \item{\code{ N }}{ The count of references for the location }
+#' }
+#'
+#' For further details, see the either the [NSUL](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=-created&tags=all(PRD_NSUL))
+#' of the [ONSUD](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=-created&tags=all(PRD_ONSUD)) product.
+#'
+'U7'
+
+## U8 ------------------
+#' U8
+#'
+#' This dataset contains the locations and correspondent Postcode Units (`PCU`) of all *Unique Property Reference Number* (`UPRN`) 
+#' in the Region *South East* (ONS code: `E12000008`)
+#'
+#' @format A data.table with the following columns:
+#' \describe{
+#'   \item{\code{ PCU }}{ The Postcode Unit the Property is included into }
+#'   \item{\code{ x_lon }}{ The longitude of the Property }
+#'   \item{\code{ y_lat }}{ The latitude of the Property }
+#'   \item{\code{ N }}{ The count of references for the location }
+#' }
+#'
+#' For further details, see the either the [NSUL](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=-created&tags=all(PRD_NSUL))
+#' of the [ONSUD](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=-created&tags=all(PRD_ONSUD)) product.
+#'
+'U8'
+
+## U9 ------------------
+#' U9
+#'
+#' This dataset contains the locations and correspondent Postcode Units (`PCU`) of all *Unique Property Reference Number* (`UPRN`) 
+#' in the Region *South West* (ONS code: `E12000009`)
+#'
+#' @format A data.table with the following columns:
+#' \describe{
+#'   \item{\code{ PCU }}{ The Postcode Unit the Property is included into }
+#'   \item{\code{ x_lon }}{ The longitude of the Property }
+#'   \item{\code{ y_lat }}{ The latitude of the Property }
+#'   \item{\code{ N }}{ The count of references for the location }
+#' }
+#'
+#' For further details, see the either the [NSUL](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=-created&tags=all(PRD_NSUL))
+#' of the [ONSUD](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=-created&tags=all(PRD_ONSUD)) product.
+#'
+'U9'
+
+## US ------------------
+#' US
+#'
+#' This dataset contains the locations and correspondent Postcode Units (`PCU`) of all *Unique Property Reference Number* (`UPRN`) 
+#' in `S`*cotland*
+#'
+#' @format A data.table with the following columns:
+#' \describe{
+#'   \item{\code{ PCU }}{ The Postcode Unit the Property is included into }
+#'   \item{\code{ x_lon }}{ The longitude of the Property }
+#'   \item{\code{ y_lat }}{ The latitude of the Property }
+#'   \item{\code{ N }}{ The count of references for the location }
+#' }
+#'
+#' For further details, see the either the [NSUL](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=-created&tags=all(PRD_NSUL))
+#' of the [ONSUD](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=-created&tags=all(PRD_ONSUD)) product.
+#'
+'US'
+
+## UW ------------------
+#' UW
+#'
+#' This dataset contains the locations and correspondent Postcode Units (`PCU`) of all *Unique Property Reference Number* (`UPRN`) 
+#' in `W`*ales*
+#'
+#' @format A data.table with the following columns:
+#' \describe{
+#'   \item{\code{ PCU }}{ The Postcode Unit the Property is included into }
+#'   \item{\code{ x_lon }}{ The longitude of the Property }
+#'   \item{\code{ y_lat }}{ The latitude of the Property }
+#'   \item{\code{ N }}{ The count of references for the location }
+#' }
+#'
+#' For further details, see the either the [NSUL](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=-created&tags=all(PRD_NSUL))
+#' of the [ONSUD](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=-created&tags=all(PRD_ONSUD)) product.
+#'
+'UW'
+
