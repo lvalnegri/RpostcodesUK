@@ -2,23 +2,24 @@
 % Please edit documentation in R/pcu_map.R
 \name{pcu_map}
 \alias{pcu_map}
-\title{Map a postcode unit}
+\title{Map a Postcode Unit or a Zone}
 \usage{
-pcu_map(x, bfr = 10, cnc = 2)
+pcu_map(x, bfr = 10, concave = TRUE, cnc_val = 2)
 }
 \arguments{
-\item{x}{a string}
+\item{x}{a string representing a Postcode Unit or Zone}
 
-\item{bfr}{the value in meter for the buffer around the UPRNs}
+\item{bfr}{the value in meter for the buffer around the group of Properties included in the Unit or Zone}
 
-\item{cnc}{the value for the \emph{concavity} of the "concave hull" around the UPRNs}
+\item{concave}{logical to indicate a \emph{concave hull} instead of the more classic \emph{convex hull}}
+
+\item{cnc_val}{the value for the \emph{concavity} of the \emph{concave hull} around the UPRNs}
 }
 \value{
 a leaflet object
 }
 \description{
-Build a leaflet map for a postcode using its ONS centroid, the buffer from the union of its UPRNs,
-and the \emph{voronoi} polygon
+Build a leaflet map for a Postcode Unit or Zone using a \emph{concave} or \emph{convex hull} around its Properties.
 }
 \author{
 Luca Valnegri, \email{l.valnegri@datamaps.co.uk}
