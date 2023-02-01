@@ -1,10 +1,10 @@
 Package: RpostcodesUK
 Type: Package
-Date: 2022-11-10
-Title: Insert Title (less than 100 character)
-Version: 0.1.0
+Date: 2023-02-01
+Title: Data and functionalities about the UK Postal Hierarchy
+Version: 0.2.0
 Authors@R: person(given = "Luca", family = "Valnegri", email = "l.valnegri@datamaps.co.uk", role = c("aut", "cre"))
-Description: Insert Description, at least two sentences, keep the dot at the end.
+Description: Data and functionalities about the UK Postal Hierarchy: Postcode Units, Sectors, Districts, and Areas, plus Post Towns.
 License: MIT + file LICENSE
 Language: en-GB
 Encoding: UTF-8
@@ -15,19 +15,19 @@ Imports:
   concaveman,
   data.table,
   leaflet,
-  Rfuns,
   sf
 Suggests:
   knitr,
   parallel,
   qs,
   rmapshaper,
+  Rfuns,
   rmarkdown,
   rvest
 Remotes:
   lvalnegri/Rfuns
 LazyData: true
-LazyDataCompression:gzip
+LazyDataCompression: gzip
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.1
 VignetteBuilder: knitr
