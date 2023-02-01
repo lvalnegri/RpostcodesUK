@@ -2,9 +2,9 @@
 # UK POSTCODES * 11 - POSTCODES #
 #################################
 
-Rfuns::load_pkgs('data.table', 'qs', 'rmapshaper', 'sf')
+Rfuns::load_pkgs('data.table', 'qs', 'sf')
 
-setDTthreads(10)
+setDTthreads(parallel::detectCores() - 2)
 
 ons_id <- '489c152010a3425f80a71dc3663f73e1'
 down <- FALSE
@@ -31,7 +31,7 @@ pc <- fread(
         na.string = '',
         key = 'PCU'
 )
-# >>>>>>>>> delete following when census 2021 results are published for every country <<<<<<<<<<<
+# >>>>>>>>> delete following row when census 2021 results are published for every country <<<<<<<<<<<
 pc[OA == '', OA := OA11]
 
 message('Building lookalike tables as Table 1 and 3 in User Guide:')
@@ -175,16 +175,10 @@ pcdt <- ypk[, .(OA, PCD)
 pcdt <- pcdt[pcdt[, .I[which.max(N)], PCD.old]$V1][, N := NULL]
 fwrite(rbindlist(list( pcda, pcdt ))[order(PCD.old)], './data-raw/csv/pcd_linkage.csv')
 
-message('Recoding char columns as factors...')
-setcolorder(pc, c('PCU', 'is_active', 'usertype', 'x_lon', 'y_lat', 'OA', 'OA11', 'PCS'))
-cols <- c('OA', 'OA11', 'PCS', 'RGN', 'CTRY', 'WPZ')
-pc[, (cols) := lapply(.SD, factor), .SDcols = cols]
-
 message('Saving postcodes...')
+setcolorder(pc, c('PCU', 'is_active', 'usertype', 'x_lon', 'y_lat', 'OA', 'OA11', 'PCS'))
 setorderv(pc, c('is_active', 'CTRY', 'RGN', 'PCS', 'OA', 'PCU'), c(-1, rep(1, 5)))
 save_dts_pkg(pc, 'postcodes', geouk_path, c('is_active', 'PCS'), TRUE, 'postcodes_uk', 'postcodes', TRUE, TRUE, TRUE)
-file.copy('./data-raw/postcodes.csv.zip', './data-raw/csv/postcodes.csv.zip', overwrite = TRUE)
-file.remove('./data-raw/postcodes.csv.zip')
 
 message('Saving a lookalike Table 2 User Guide (remember that now postcodes without grid have been deleted)...')
 pc <- ypk[pc[, PCS := NULL], on = 'OA']

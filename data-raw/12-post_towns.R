@@ -1,8 +1,9 @@
 ####################################
 # UK GEOGRAPHY * 16 - Postal Towns #
 ####################################
-# to check: 
-# - CM92: Harlow, Pinnacles; CM98, CM99: Chelmsford
+# to check manually: 
+# - CM92: Harlow, Pinnacles; 
+# - CM98, CM99: Chelmsford
 # - EC2N, EC2R, EC3A, EC3M, EC3V, EC4N, EC4R: EC London
 # - PA62, PA63, PA68, PA69, PA74: Isle Of Mull
 # - PH42: Isle Of Eigg
@@ -10,13 +11,13 @@
 # - PH44: Isle Of Canna
 # - WC2R:	WC London
 
-Rfuns::load_pkgs('data.table', 'fst', 'rvest')
+Rfuns::load_pkgs('data.table')
 
 ya <- fread('./data-raw/csv/PCA.csv')
-y <- read_html('https://en.wikipedia.org/wiki/List_of_post_towns_in_the_United_Kingdom')
+y <- rvest::read_html('https://en.wikipedia.org/wiki/List_of_post_towns_in_the_United_Kingdom')
 y <- data.table(
-        PCA = y |> html_elements('td:nth-child(1)') |> html_text() |> gsub('\n', '', x = _),
-        PCT = y |> html_elements('td~ td+ td') |> html_text() |> gsub('\n', '', x = _)
+        PCA = y |> rvest::html_elements('td:nth-child(1)') |> rvest::html_text() |> gsub('\n', '', x = _),
+        PCT = y |> rvest::html_elements('td~ td+ td') |> rvest::html_text() |> gsub('\n', '', x = _)
 )
 y <- y[ya, on = 'PCA']
 y <- y[, .(PCT = unlist(tstrsplit(PCT, ',', type.convert = TRUE))), PCA ]
@@ -59,3 +60,8 @@ for(idx in 1:nrow(ya)){
 }
 yw <- Rfuns::capitalize(yw, 'PCT')
 fwrite(yw, './data-raw/wiki/PCD_PCT.csv')
+
+message('DONE! Cleaning...')
+rm(list = ls())
+gc()
+.rs.restartR()
