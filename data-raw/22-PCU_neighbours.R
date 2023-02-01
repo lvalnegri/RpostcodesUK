@@ -1,8 +1,9 @@
 ##########################################################
-# UK GEOGRAPHY * Calculate Neighbours for Postcode Units #
+# RpostcodesUK * Calculate Neighbours for Postcode Units #
 ##########################################################
 
-Rfuns::load_pkgs('data.table', 'fst', 'sf')
+Rfuns::load_pkgs('data.table')
+load_all()
 
 out_path <- file.path(data_path, 'geography', 'neighbours')
 
@@ -19,7 +20,7 @@ pcd <- pc[pcd, on = c('x_lon', 'y_lat')][, `:=`(x_lon = NULL, y_lat = NULL)]
 setnames(pcd, 'i.postcode', 'pcd')
 
 message('Calculating neighbors...')
-neighs <- tri2nb(as.matrix(pc[, .(x_lon, y_lat)]), row.names = pc$postcode)
+neighs <- tri2nb(as.matrix(pc[, .(x_lon, y_lat)]), row.names = pc$PCU)
 
 message('Extracting the list')
 rgn.lst <- as.character(attr(neighs, 'region.id'))
