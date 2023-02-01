@@ -1,6 +1,7 @@
 #' RpostcodesUK
 #' 
-#' Insert a thorough description of what the package is expected to do 
+#' Data and functionalities about the UK Postal Hierarchy: 
+#' Postcode Units, Sectors, Districts, and Areas, plus Post Towns. 
 #'  
 #' @docType package
 #' @name RpostcodesUK
