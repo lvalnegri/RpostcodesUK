@@ -3,8 +3,7 @@
 \docType{data}
 \name{output_areas}
 \alias{output_areas}
-\title{A list of all 2,619,057 \emph{Postcode Units} \code{PCU} in the UK (as of NOV-22: 1,737,670 active, 881,387 terminated),
-together with their geographic coordinates (CRS 4326, WGS84), and the corresponding \emph{Output Area} \code{OA} and current \emph{Postcode Sector} \code{PCS}.}
+\title{Output Areas}
 \format{
 A data.table with the following columns:
 \describe{

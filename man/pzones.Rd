@@ -3,20 +3,41 @@
 \docType{data}
 \name{pzones}
 \alias{pzones}
-\title{A list of codes and names for all zones related to the Postal hierarchy.}
+\title{Postal Zones List}
 \format{
 A data.table with the following columns:
 \describe{
-\item{\code{type}}{ }
-\item{\code{code}}{  }
-\item{\code{name}}{  }
-\item{\code{ordering}}{  }
+\item{\code{type}}{ the acronym for the level of the hierarchy }
+\item{\code{code}}{ the id for the Zone }
+\item{\code{name}}{ the name for the Zone  }
+\item{\code{ordering}}{ The order of the Zone in reporting  }
+\item{\code{type}}{ The geographic hierarchy the Zone belongs to }
+\item{\code{code}}{ The identifier for the Area }
+\item{\code{name}}{ The name for the Zone }
+\item{\code{parent}}{ The code of the Zone in which the current zone is contained as immediate level.
+For Postcode Areas (\code{PCA}) the parent hasss been set as the Regions,
+but notice that some Zone belongs to more than one Region, see the table \code{pcs_regions})
+}
+\item{\code{CTRY}}{ The Country the Zone belongs to
+(notice that some Zone belongs to more than one Country, see the table \code{pcs_countries})}
+\item{\code{perimeter}}{ The perimeter }
+\item{\code{area}}{ The area }
+\item{\code{x_lon}}{ The longitude coordinate of the geometric centroid }
+\item{\code{y_lat}}{ The latitude coordinate of the geometric centroid }
+\item{\code{px_lon}}{ The longitude coordinate of the \emph{pole of inaccessibility} }
+\item{\code{py_lat}}{ The latitude coordinate of the \emph{pole of inaccessibility} }
+\item{\code{wx_lon}}{ The longitude coordinate of the \emph{population weighted} centroid }
+\item{\code{wy_lat}}{ The latitude coordinate of the \emph{population weighted} centroid }
+\item{\code{bb_xmin}}{ The minimum longitude coordinate of the \emph{bounding box} for the Zone }
+\item{\code{bb_ymin}}{ The minimum latitude coordinate of the \emph{bounding box} for the Zone }
+\item{\code{bb_xmax}}{ The maximum longitude coordinate of the \emph{bounding box} for the Zone }
+\item{\code{bb_ymax}}{ The maximum latitude coordinate of the \emph{bounding box} for the Zone }
 }
 }
 \usage{
 pzones
 }
 \description{
-A list of codes and names for all zones related to the Postal hierarchy.
+A list of codes and names for all Zones related to the Postal hierarchy.
 }
 \keyword{datasets}
