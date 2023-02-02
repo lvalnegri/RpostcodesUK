@@ -305,6 +305,13 @@ NULL
 #'
 'PCA'
 
+#' mps
+#'
+#' Initial leaflet map centred on UK
+#'
+'mps'
+
+
 # ADDRESSES / UPRN ----------
 
 ## U1 ------------------
