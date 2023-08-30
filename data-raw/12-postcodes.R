@@ -6,12 +6,13 @@ Rfuns::load_pkgs('data.table', 'qs', 'sf')
 
 setDTthreads(parallel::detectCores() - 2)
 
-ons_id <- '489c152010a3425f80a71dc3663f73e1'
 down <- FALSE
 
 pc_path <- file.path(ext_path, 'uk', 'geography', 'postcodes')
+out_path <- file.path(geouk_path, 'postcodes')
 
 if(down){
+    ons_id <- '487a5ba62c8b4da08f01eb3c08e304f6'
     message('\nDownloading ONSPD zip file...\n')
     tmpf <- tempfile()
     download.file(paste0('https://www.arcgis.com/sharing/rest/content/items/', ons_id, '/data'), destfile = tmpf)
@@ -26,13 +27,11 @@ if(down){
 message('Loading ONSPD data...')
 pc <- fread(
         file.path(pc_path, 'ONSPD.csv'), 
-        select = c('pcd', 'osgrdind', 'doterm', 'usertype', 'long', 'lat', 'oa11', 'oa21', 'rgn', 'ctry', 'wz11'),
-        col.names = c('PCU', 'osgrdind', 'is_active', 'usertype', 'x_lon', 'y_lat', 'OA11', 'OA', 'RGN', 'CTRY', 'WPZ'),
+        select = c('pcd', 'osgrdind', 'doterm', 'usertype', 'long', 'lat', 'oseast1m', 'osnrth1m', 'rgn', 'ctry'),
+        col.names = c('PCU', 'pqi', 'is_active', 'usertype', 'x_lon', 'y_lat', 'Easting', 'Northing', 'RGN', 'CTRY'),
         na.string = '',
         key = 'PCU'
 )
-# >>>>>>>>> delete following row when census 2021 results are published for every country <<<<<<<<<<<
-pc[OA == '', OA := OA11]
 
 message('Building lookalike tables as Table 1 and 3 in User Guide:')
 message(' + Total dataset:')
@@ -47,26 +46,22 @@ message(' + By grid, country and user type, with count and percentage')
 print(
     dcast(
         pc[, (Nct =.N),  .(usertype, CTRY)
-           ][pc[, .N, .(osgrdind, usertype, CTRY)], on = c('usertype', 'CTRY')
+           ][pc[, .N, .(pqi, usertype, CTRY)], on = c('usertype', 'CTRY')
              ][, pct := round(100 * N /V1, 2)][, V1 := NULL], 
-        osgrdind~CTRY+usertype, 
+        pqi~CTRY+usertype, 
         value.var = c('N', 'pct'), 
         fill = 0
     )
 )
 
-message('Deleting postcodes without grid reference (osgrdind == 9, deletes also GI/IM), then reorder by OA and PCU...')
-pc <- pc[osgrdind < 9][, osgrdind := NULL][order(OA, PCU)]
+message('Deleting postcodes without grid reference (pqi == 9, deletes also GI/IM)...')
+pc <- pc[pqi < 9][order(PCU)]
 message(' + Countries by usertypes (Table 3)...')
 print(dcast(pc, CTRY~usertype))
 
-message('Recoding "is_active" as binary 0/1 (Table 4)...')
+  message('Recoding "is_active" as binary 0/1 (Table 4)...')
 pc[, is_active := ifelse(is.na(is_active), 1, 0)]
 message(' + Countries by active vs. terminated...')
-print(dcast(pc, CTRY~is_active))
-
-message('Setting "is_active" = 1 for all postcodes in output areas that only include inactive pc...')
-pc[!OA %in% unique(pc[is_active == 1, OA]), is_active := 1]
 print(dcast(pc, CTRY~is_active))
 
 message('Set PCD AB1/AB2/AB3 as terminated...')
@@ -75,12 +70,17 @@ pc[substr(PCU, 1, 4) %in% paste0('AB', 1:3, ' '), is_active := 0]
 message('Calculate PC Sectors codes from postcodes...')
 pc[is_active == 1, PCS := substr(PCU, 1, 5) ]
 
-message('Deleting records associated witn non-geographic PC Sectors...')
-message(' - Number of OAs before deletion: ', unique(pc[is_active == 1, .(OA)])[,.N])
-ng <- read.csv('./data-raw/csv/pcs_non_geo.csv')
-pc <- pc[!PCS %in% ng$PCS]
-message(' - Number of 2011 OAs after deletion (UK): ', unique(pc[is_active == 1, .(OA11)])[,.N])
-message(' - Number of 2021 OAs after deletion (ENG-WLS): ', unique(pc[is_active == 1, .(OA)])[,.N])
+message('Flag records associated witn non-geographic PC Sectors and Districts...') # as of Post Office pdf Jul-19 and Wikipedia Aug-23
+pc[, is_nongeo := 0]
+y <- read.csv('./data-raw/csv/pcs_non_geo.csv')
+pc[PCS %in% y$PCS, is_nongeo := 1]
+y <- read.csv('./data-raw/csv/pcd_non_geo.csv')
+pc[, PCD := gsub(' .*', '', substr(PCS, 1, 4)) ]
+pc[PCD %in% y$PCD, is_nongeo := 1]
+y <- read.csv('./data-raw/csv/PCD.csv')
+pc[!(is.na(PCD) | PCD %in% y$PCD), is_nongeo := 1]
+pc[is_nongeo == 1, PCS := NA]
+pc[, PCD := NULL]
 
 message('Fixing CTRY and RGN...')
 pc[, CTRY := substr(CTRY, 1, 1)]
@@ -88,13 +88,48 @@ ctry <- data.table( 'old' = c('E', 'W', 'S', 'N'), 'CTRY' = c('ENG', 'WLS', 'SCO
 pc <- ctry[pc, on = c(old = 'CTRY')][, old := NULL]
 pc[substr(RGN, 1, 1) != 'E', RGN := paste0(CTRY, '_RGN')]
 
-message('Saving a geographic WGS84 version...')
-pcg <- pc[, .(PCU, x_lon, y_lat, is_active, PCS, OA, OA11, RGN, CTRY, WPZ)]
-pcg <- st_as_sf(pcg, coords = c('x_lon', 'y_lat'), crs = 4326)
-qsave(pcg, file.path(geouk_path, 'postcodes.wgs'), nthreads = 6)
-message('Reprojecting using OSGB36 / British National Grid, epsg 27700...')
-pcg <- pcg |> st_transform(27700)
-qsave(pcg, file.path(geouk_path, 'postcodes.bng'), nthreads = 6)
+# === END ===
+
+# should go back where small areas boundaries are workedout, and save differently for GB (27700) and NI (29902) 
+
+message('Finding output area 2011 (OA11) for each postcode unit (PCU)...')
+message(' - Great Britain (27700)...')
+pcg.gb <- pc[CTRY != 'NIE', .(PCU, Easting, Northing)] |> st_as_sf(coords = 2:3, crs = 27700)
+oas.gb <- qs::qread(file.path(bnduk_path, 's00', 'OAgb'), nthreads = 6)
+y.gb <- pcg.gb |> st_join(oas.gb, join = st_within) |> st_drop_geometry() |> as.data.table()
+pc.na <- c(y.gb[is.na(OA), PCU], y.gb[, .N, PCU][N > 1, unique(PCU)])
+y.gb.na <- pcg.gb |> subset(PCU %in% pc.na)
+y.gb <- rbindlist(list( 
+          y.gb[!PCU %in% pc.na], 
+          data.table(y.gb.na |> st_drop_geometry(), oas.gb[ y.gb.na |> st_nearest_feature(oas.gb),] |> st_drop_geometry())
+))
+message(' - N.Ireland (29902)...')
+pcg.ni <- pc[CTRY == 'NIE', .(PCU, Easting, Northing)] |> st_as_sf(coords = 2:3, crs = 29902)
+oas.ni <- qs::qread(file.path(bnduk_path, 's00', 'OAgb'), nthreads = 6)
+y.ni <- pcg.ni |> st_join(oas.ni, join = st_within) |> st_drop_geometry() |> as.data.table()
+pc.na <- c(y.ni[is.na(OA), PCU], y.ni[, .N, PCU][N > 1, unique(PCU)])
+y.ni.na <- pcg.ni |> subset(PCU %in% pc.na)
+y.ni <- rbindlist(list( 
+          y.ni[!PCU %in% pc.na], 
+          data.table(y.ni.na |> st_drop_geometry(), oas.ni[ y.ni.na |> st_nearest_feature(oas.ni),] |> st_drop_geometry())
+))
+message(' - merging...')
+pc <- rbindlist(list(y.gb, y.ni))[pc, on = 'PCU'] |> setnames('OA', 'OA11')
+
+message('Finding output area 2021 (OA) for each postcode unit (PCU)...')
+message(' - Great Britain (27700)...')
+oas.gb <- qs::qread(file.path(bnduk_path, 's00', 'OA21gb'), nthreads = 6) |> setnames('OA21', 'OA')
+oas <- rbind( oas |> subset(substr(OA, 1, 1) %in% c('S', 'N')), oas.gb ) |> st_make_valid()
+y <- pcg |> st_join(oas, join = st_within) |> st_drop_geometry() |> as.data.table()
+pc.na <- c(y[is.na(OA), PCU], y[, .N, PCU][N>1, unique(PCU)])
+y.na <- pcg |> subset(PCU %in% pc.na)
+y <- rbindlist(list( 
+        y[!PCU %in% pc.na], 
+        data.table(y.na |> st_drop_geometry(), oas[ y.na |> st_nearest_feature(oas),] |> st_drop_geometry())
+))
+message(' - N.Ireland (29902)...')
+message(' - merging...')
+pc <- y[pc, on = 'PCU']
 
 message('Attach a postcode sector to missing OA11 (258)...')
 bnd.oa <- qread(file.path(bnduk_path, 's00', 'OAgb'), nthreads = 6) |> setnames('OA', 'OA11')
@@ -114,6 +149,17 @@ yn21 <- data.table(2021, yn21, pcgn[y,] |> subset(select = PCS) |> st_drop_geome
 # >>>>>>>>> delete following when census 2021 results are published for every country <<<<<<<<<<<
 yn21 <- rbindlist(list( yn21, yn11[substr(OA, 1, 1) %in% c('N', 'S')][, census := 2021] ), use.names = FALSE)
 fwrite(rbindlist(list(yn11, yn21), use.names = FALSE)[order(census, OA)], './data-raw/csv/missing_oa.csv')
+
+message('Saving postcodes table as spatial objects...')
+message('- geographic WGS84 version for all UK PCUs...')
+pcg <- pc[, .(PCU, x_lon, y_lat, is_active, PCS, OA, OA11, RGN, CTRY)] |> st_as_sf(coords = c('x_lon', 'y_lat'), crs = 4326)
+qsave(pcg, file.path(out_path, 'postcodes.wgs'), nthreads = 6)
+message('- reprojecting GB only using OSGB36 / British National Grid, epsg 27700...')
+pcg <- pcg |> st_transform(27700)
+qsave(pcg, file.path(out_path, 'postcodes.gb'), nthreads = 6)
+message('- reprojecting NIE only using Irish Grid, epsg 29902...')
+pcg <- pcg |> st_transform(27700)
+qsave(pcg, file.path(out_path, 'postcodes.ni'), nthreads = 6)
 
 message('\nBuilding OA-PCS lookups...')
 ypi <- pc[is_active == 1, .N, .(OA, PCS, RGN)][order(OA, -N)]
@@ -175,10 +221,10 @@ pcdt <- ypk[, .(OA, PCD)
 pcdt <- pcdt[pcdt[, .I[which.max(N)], PCD.old]$V1][, N := NULL]
 fwrite(rbindlist(list( pcda, pcdt ))[order(PCD.old)], './data-raw/csv/pcd_linkage.csv')
 
-message('Saving postcodes...')
+message('Saving postcodes table...')
 setcolorder(pc, c('PCU', 'is_active', 'usertype', 'x_lon', 'y_lat', 'OA', 'OA11', 'PCS'))
 setorderv(pc, c('is_active', 'CTRY', 'RGN', 'PCS', 'OA', 'PCU'), c(-1, rep(1, 5)))
-save_dts_pkg(pc, 'postcodes', geouk_path, c('is_active', 'PCS'), TRUE, 'postcodes_uk', 'postcodes', TRUE, TRUE, TRUE)
+save_dts_pkg(pc, 'postcodes', out_path, c('is_active', 'PCS'), TRUE, 'postcodes_uk', 'postcodes', TRUE, TRUE, TRUE)
 
 message('Saving a lookalike Table 2 User Guide (remember that now postcodes without grid have been deleted)...')
 pc <- ypk[pc[, PCS := NULL], on = 'OA']
@@ -222,7 +268,7 @@ setcolorder(y, names(pc))
 
 message(' - Saving as fst...')
 setorderv(y, c('is_active', 'CTRY', 'RGN', 'PCS', 'OA', 'PCU'))
-write_fst_idx('postcodes.full', c('is_active', 'PCS'), y, geouk_path)
+write_fst_idx('postcodes.full', c('is_active', 'PCS'), y, out_path)
 
 message('DONE! Cleaning...')
 rm(list = ls())

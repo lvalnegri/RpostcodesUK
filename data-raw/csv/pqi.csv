@@ -1,0 +1,9 @@
+pqi,description,N
+1,within the building of the matched address closest to the postcode mean,
+2,"as for `1`, except by visual inspection of Landline maps (Scotland only)",
+3,approximate to within 50 metres,
+4,"postcode unit mean (mean of matched addresses with the same postcode, but not snapped to an address)",
+5,"imputed by ONS, by reference to surrounding postcode grid references",
+6,postcode sector mean (mainly PO Boxes),
+8,"only for terminated postcode prior to the `Gridlink` system, the last known ONS grid reference used",
+9,no coordinates available,
