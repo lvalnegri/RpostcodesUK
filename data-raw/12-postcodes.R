@@ -2,7 +2,7 @@
 # UK POSTCODES * 11 - POSTCODES #
 #################################
 
-Rfuns::load_pkgs('data.table', 'qs', 'sf')
+Rfuns::load_pkgs('data.table', 'leaflet', 'leafgl', 'qs', 'sf')
 
 setDTthreads(parallel::detectCores() - 2)
 
@@ -10,6 +10,7 @@ down <- FALSE
 
 pc_path <- file.path(ext_path, 'uk', 'geography', 'postcodes')
 out_path <- file.path(geouk_path, 'postcodes')
+mps <- leaflet() |> addTiles()
 
 if(down){
     ons_id <- '487a5ba62c8b4da08f01eb3c08e304f6'
@@ -59,7 +60,7 @@ pc <- pc[pqi < 9][order(PCU)]
 message(' + Countries by usertypes (Table 3)...')
 print(dcast(pc, CTRY~usertype))
 
-  message('Recoding "is_active" as binary 0/1 (Table 4)...')
+message('Recoding "is_active" as binary 0/1 (Table 4)...')
 pc[, is_active := ifelse(is.na(is_active), 1, 0)]
 message(' + Countries by active vs. terminated...')
 print(dcast(pc, CTRY~is_active))
@@ -80,6 +81,8 @@ pc[PCD %in% y$PCD, is_nongeo := 1]
 y <- read.csv('./data-raw/csv/PCD.csv')
 pc[!(is.na(PCD) | PCD %in% y$PCD), is_nongeo := 1]
 pc[is_nongeo == 1, PCS := NA]
+pc[, is_valid := 0][is_active == 1 & is_nongeo == 0, is_valid := 1]
+pcv <- pc[is_valid == 1]
 pc[, PCD := NULL]
 
 message('Fixing CTRY and RGN...')
@@ -87,10 +90,6 @@ pc[, CTRY := substr(CTRY, 1, 1)]
 ctry <- data.table( 'old' = c('E', 'W', 'S', 'N'), 'CTRY' = c('ENG', 'WLS', 'SCO', 'NIE') )
 pc <- ctry[pc, on = c(old = 'CTRY')][, old := NULL]
 pc[substr(RGN, 1, 1) != 'E', RGN := paste0(CTRY, '_RGN')]
-
-# === END ===
-
-# should go back where small areas boundaries are workedout, and save differently for GB (27700) and NI (29902) 
 
 message('Finding output area 2011 (OA11) for each postcode unit (PCU)...')
 message(' - Great Britain (27700)...')
@@ -105,7 +104,7 @@ y.gb <- rbindlist(list(
 ))
 message(' - N.Ireland (29902)...')
 pcg.ni <- pc[CTRY == 'NIE', .(PCU, Easting, Northing)] |> st_as_sf(coords = 2:3, crs = 29902)
-oas.ni <- qs::qread(file.path(bnduk_path, 's00', 'OAgb'), nthreads = 6)
+oas.ni <- qs::qread(file.path(bnduk_path, 's00', 'OAni'), nthreads = 6)
 y.ni <- pcg.ni |> st_join(oas.ni, join = st_within) |> st_drop_geometry() |> as.data.table()
 pc.na <- c(y.ni[is.na(OA), PCU], y.ni[, .N, PCU][N > 1, unique(PCU)])
 y.ni.na <- pcg.ni |> subset(PCU %in% pc.na)
@@ -118,53 +117,60 @@ pc <- rbindlist(list(y.gb, y.ni))[pc, on = 'PCU'] |> setnames('OA', 'OA11')
 
 message('Finding output area 2021 (OA) for each postcode unit (PCU)...')
 message(' - Great Britain (27700)...')
-oas.gb <- qs::qread(file.path(bnduk_path, 's00', 'OA21gb'), nthreads = 6) |> setnames('OA21', 'OA')
-oas <- rbind( oas |> subset(substr(OA, 1, 1) %in% c('S', 'N')), oas.gb ) |> st_make_valid()
-y <- pcg |> st_join(oas, join = st_within) |> st_drop_geometry() |> as.data.table()
-pc.na <- c(y[is.na(OA), PCU], y[, .N, PCU][N>1, unique(PCU)])
-y.na <- pcg |> subset(PCU %in% pc.na)
-y <- rbindlist(list( 
-        y[!PCU %in% pc.na], 
-        data.table(y.na |> st_drop_geometry(), oas[ y.na |> st_nearest_feature(oas),] |> st_drop_geometry())
+oas.gb <- qs::qread(file.path(bnduk_path, 's00', 'OA21gb'), nthreads = 6)
+y.gb <- pcg.gb |> subset(!PCU %in% pc[CTRY == 'SCO', PCU]) |> st_join(oas.gb, join = st_within) |> st_drop_geometry() |> as.data.table()
+pc.na <- c(y.gb[is.na(OA), PCU], y.gb[, .N, PCU][N > 1, unique(PCU)])
+y.gb.na <- pcg.gb |> subset(PCU %in% pc.na)
+y.gb <- rbindlist(list( 
+          y.gb[!PCU %in% pc.na], 
+          data.table(y.gb.na |> st_drop_geometry(), oas.gb[ y.gb.na |> st_nearest_feature(oas.gb),] |> st_drop_geometry())
 ))
-message(' - N.Ireland (29902)...')
+message(' - [N.Ireland (29902)...')
+pcg.ni <- pc[CTRY == 'NIE', .(PCU, Easting, Northing)] |> st_as_sf(coords = 2:3, crs = 29902)
+oas.ni <- qs::qread(file.path(bnduk_path, 's00', 'OA21ni'), nthreads = 6)
+y.ni <- pcg.ni |> st_join(oas.ni, join = st_within) |> st_drop_geometry() |> as.data.table()
+pc.na <- c(y.ni[is.na(OA), PCU], y.ni[, .N, PCU][N > 1, unique(PCU)])
+y.ni.na <- pcg.ni |> subset(PCU %in% pc.na)
+y.ni <- rbindlist(list( 
+          y.ni[!PCU %in% pc.na], 
+          data.table(y.ni.na |> st_drop_geometry(), oas.ni[ y.ni.na |> st_nearest_feature(oas.ni),] |> st_drop_geometry())
+))
 message(' - merging...')
-pc <- y[pc, on = 'PCU']
+pc <- rbindlist(list(y.gb, y.ni))[pc, on = 'PCU']
 
-message('Attach a postcode sector to missing OA11 (258)...')
-bnd.oa <- qread(file.path(bnduk_path, 's00', 'OAgb'), nthreads = 6) |> setnames('OA', 'OA11')
+message('Attach a postcode sector to missing ENG-SCO-WLS OA11...')
 oas <- fread('./data-raw/csv/OA_LSOA_MSOA.csv', select = 'OA', col.names = 'OA11')
-yn11 <- oas[!OA11 %in% unique(pc[is_active == 1, OA11])][, .(OA = OA11)][order(OA)]
-pcgn <- pcg |> dplyr::filter(is_active == 1)
-y <- st_nearest_feature(bnd.oa |> subset(OA11 %in% yn11$OA), pcgn)
-yn11 <- data.table(census = 2011, yn11, pcgn[y,] |> subset(select = PCS) |> st_drop_geometry())
+message(' - check there are no missing OAs from N.Ireland:')
+table(substr(oas$OA11, 1, 1)) - table(substr(unique(pcv[,  OA11]), 1, 1))
+pcgn <- pcg.gb |> subset(PCU %in% pcv$PCU) |> merge(pc[, .(PCU, PCS)])
+oas.gb <- qread(file.path(bnduk_path, 's00', 'OAgb'), nthreads = 6) |> setnames('OA', 'OA11')
+yn11 <- oas[!OA11 %in% unique(pcv$OA11)][order(OA11)]
+y <- oas.gb |> subset(OA11 %in% yn11$OA) |> st_nearest_feature(pcgn)
+yn11 <- data.table(census = 2011, yn11, pcgn[y,] |> st_drop_geometry()) |> setnames('OA11', 'OA')
 
-message('Attach a postcode sector to missing OA21 (24)...')
-bnd.oa <- qread(file.path(bnduk_path, 's00', 'OA21gb'), nthreads = 6) |> setnames('OA21', 'OA')
+message('Attach a postcode sector to missing OA21...')
 oas <- fread('./data-raw/csv/OA21_LSOA21_MSOA21.csv', select = 'OA21', col.names = 'OA')
-yn21 <- oas[!OA %in% unique(pc[is_active == 1, OA])][order(OA)]
-pcgn <- pcg |> dplyr::filter(is_active == 1)
-y <- st_nearest_feature(bnd.oa |> subset(OA %in% yn21$OA), pcgn)
-yn21 <- data.table(2021, yn21, pcgn[y,] |> subset(select = PCS) |> st_drop_geometry())
-# >>>>>>>>> delete following when census 2021 results are published for every country <<<<<<<<<<<
-yn21 <- rbindlist(list( yn21, yn11[substr(OA, 1, 1) %in% c('N', 'S')][, census := 2021] ), use.names = FALSE)
-fwrite(rbindlist(list(yn11, yn21), use.names = FALSE)[order(census, OA)], './data-raw/csv/missing_oa.csv')
+message(' - check there are no missing OAs from N.Ireland:')
+table(substr(oas$OA, 1, 1)) - table(substr(unique(pcv$OA), 1, 1))
+oas.gb <- qread(file.path(bnduk_path, 's00', 'OA21gb'), nthreads = 6)
+yn21 <- oas[!OA %in% unique(pcv$OA)][order(OA)]
+y <- oas.gb |> subset(OA %in% yn21$OA) |> st_nearest_feature(pcgn)
+yn21 <- data.table(census = 2021, yn21, pcgn[y,] |> st_drop_geometry())
+##############################################################################################################
+# >>>>>>>>> delete following when census 2021 results are published also for Scotland <<<<<<<<<<<<<<<<<<<<<<<<
+yn21 <- rbindlist(list( yn21, yn11[substr(OA, 1, 1) == 'S'][, census := 2021] ), use.names = FALSE)
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##############################################################################################################
+fwrite(rbindlist(list(yn11, yn21))[order(census, OA)], './data-raw/csv/missing_oa.csv')
 
-message('Saving postcodes table as spatial objects...')
-message('- geographic WGS84 version for all UK PCUs...')
-pcg <- pc[, .(PCU, x_lon, y_lat, is_active, PCS, OA, OA11, RGN, CTRY)] |> st_as_sf(coords = c('x_lon', 'y_lat'), crs = 4326)
-qsave(pcg, file.path(out_path, 'postcodes.wgs'), nthreads = 6)
-message('- reprojecting GB only using OSGB36 / British National Grid, epsg 27700...')
-pcg <- pcg |> st_transform(27700)
-qsave(pcg, file.path(out_path, 'postcodes.gb'), nthreads = 6)
-message('- reprojecting NIE only using Irish Grid, epsg 29902...')
-pcg <- pcg |> st_transform(27700)
-qsave(pcg, file.path(out_path, 'postcodes.ni'), nthreads = 6)
+fwrite(pc, './data-raw/temp/postcodes.csv')
+# === END ===
+pc <- fread('./data-raw/temp/postcodes.csv', na.strings = '')
 
 message('\nBuilding OA-PCS lookups...')
-ypi <- pc[is_active == 1, .N, .(OA, PCS, RGN)][order(OA, -N)]
+ypi <- pcv[, .N, .(OA, PCS, RGN)][order(OA, -N)]
 yp <- ypi[ypi[, .I[which.max(N)], OA]$V1][, N := NULL]
-ypn <- unique(pc[is_active == 1 & !PCS %chin% unique(yp$PCS), .(OA, PCS)])
+ypn <- unique(pcv[!PCS %chin% unique(yp$PCS), .(OA, PCS)])
 for(xp in unique(ypn$PCS)){
     for(xo in ypi[PCS == xp][order(-N)][, OA]){
         xop <- yp[OA == xo, PCS]
@@ -182,9 +188,9 @@ ypk[, PCA := sub('[0-9]', '', substr(PCS, 1, gregexpr("[[:digit:]]", PCS)[[1]][1
 fwrite(ypk[, .(OA, PCS)], './data-raw/csv/OA_PCS.csv')
 fwrite(ypk[, .(OA, PCD)], './data-raw/csv/OA_PCD.csv')
 fwrite(ypk[, .(OA, PCA)], './data-raw/csv/OA_PCA.csv')
-fwrite(pc[is_active & !PCS %chin% unique(ypk$PCS)], './data-raw/csv/missing_pcs.csv')
+fwrite(pcv[!PCS %chin% unique(ypk$PCS)], './data-raw/csv/missing_pcs.csv')
 fwrite(
-    unique(pc[PCS %chin% pc[is_active == 1, .N, .(PCS, RGN)][, .N, PCS][ N > 1, PCS], .(PCS, RGN)][order(PCS)]),
+    unique(pc[PCS %chin% pcv[, .N, .(PCS, RGN)][, .N, PCS][ N > 1, PCS], .(PCS, RGN)][order(PCS)]),
     './data-raw/csv/pcs_countries.csv'
 )
 
@@ -204,7 +210,7 @@ pcs <- pcs[order(ordering, PCS)][, ordering := 1:.N][, .(PCS, ordering)]
 fwrite(pcs, file.path('./data-raw/csv/PCS.csv'))
 
 message('\nReworking PCU-PCS for entire postcodes...')
-y <- rbindlist(list( pc[is_active == 1, .(PCU, PCS)], ypk[, .(OA, PCS)][pc[is_active == 0, .(PCU, OA)], on = 'OA'][, .(PCU, PCS)]))
+y <- rbindlist(list( pcv[, .(PCU, PCS)], ypk[, .(OA, PCS)][pc[is_valid == 0, .(PCU, OA)], on = 'OA'][, .(PCU, PCS)]))
 pc <- y[pc[, PCS := NULL], on = 'PCU']
 
 message('\nSaving a linkage between PCS/D old and new for terminated PCU...')
@@ -226,6 +232,17 @@ setcolorder(pc, c('PCU', 'is_active', 'usertype', 'x_lon', 'y_lat', 'OA', 'OA11'
 setorderv(pc, c('is_active', 'CTRY', 'RGN', 'PCS', 'OA', 'PCU'), c(-1, rep(1, 5)))
 save_dts_pkg(pc, 'postcodes', out_path, c('is_active', 'PCS'), TRUE, 'postcodes_uk', 'postcodes', TRUE, TRUE, TRUE)
 
+message('Saving postcodes table as spatial objects...')
+message('- geographic WGS84 version for all UK PCUs...')
+pcg <- pc[, .(PCU, x_lon, y_lat, is_active, PCS, OA, OA11, RGN, CTRY)] |> st_as_sf(coords = c('x_lon', 'y_lat'), crs = 4326)
+qsave(pcg, file.path(out_path, 'postcodes.wgs'), nthreads = 6)
+message('- reprojecting GB only using OSGB36 / British National Grid, epsg 27700...')
+pcg <- pcg |> st_transform(27700)
+qsave(pcg, file.path(out_path, 'postcodes.gb'), nthreads = 6)
+message('- reprojecting NIE only using Irish Grid, epsg 29902...')
+pcg <- pcg |> st_transform(27700)
+qsave(pcg, file.path(out_path, 'postcodes.ni'), nthreads = 6)
+
 message('Saving a lookalike Table 2 User Guide (remember that now postcodes without grid have been deleted)...')
 pc <- ypk[pc[, PCS := NULL], on = 'OA']
 pca <- rbindlist(list(
@@ -234,6 +251,7 @@ pca <- rbindlist(list(
         PCS = uniqueN(PCS), 
         live = sum(is_active), 
         terminated = sum(!is_active), 
+        valid = sum(is_valid), 
         total = .N
     ), PCA][order(PCA)],
     pc[, .(
@@ -242,6 +260,7 @@ pca <- rbindlist(list(
         PCS = uniqueN(PCS), 
         live = sum(is_active), 
         terminated = sum(!is_active), 
+        valid = sum(is_valid), 
         total = .N
     )]        
 ))

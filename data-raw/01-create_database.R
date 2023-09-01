@@ -12,20 +12,21 @@ dd_create_db(dbn)
 x <- "
     PCU CHAR(7) NOT NULL COMMENT 'Postcode Unit in 7-chars format: 4-chars outcode + 3-chars incode',
     is_active TINYINT(1) UNSIGNED NOT NULL COMMENT 'Flag that indicates if the corresponding PCU is currently active (0) or *terminated* (1)',
-    usertype TINYINT(1) UNSIGNED NOT NULL COMMENT '0- small user, 1- large user (more than 25 items per day)',
-    pqi TINYINT(1) UNSIGNED NOT NULL COMMENT 'see the table `pqi` for descriptions of values',
     is_nongeo TINYINT(1) UNSIGNED NOT NULL 
         COMMENT '*Non-Geographic codes*, while still connected to a geographic location, are only used for routing, direct marketing or PO boxes, and 
                  should not be used for navigation, estimating distances, or any other spatial (GIS) purpose, as they are often linked to non-physical addresses.',
-    Easting MEDIUMINT UNSIGNED NOT NULL COMMENT '1m grid reference North-wide',
-    Northing MEDIUMINT UNSIGNED NOT NULL COMMENT '1m grid reference East-wide',
-    x_lon DECIMAL(7,6) NOT NULL COMMENT 'longitude of the 1m Easting',
-    y_lat DECIMAL(8,6) UNSIGNED NOT NULL COMMENT 'latitude of the 1m Northing',
-    OA CHAR(9) NOT NULL COMMENT 'Output Area 2021 (EW) + 2011 (NS) (E00, W00, S00, N00)',
+    is_valid TINYINT(1) UNSIGNED NOT NULL COMMENT 'Flag that indicates if the corresponding PCU is (1) a correct geographic entity AND currently active',
+    is_large TINYINT(1) UNSIGNED NOT NULL COMMENT 'Flag that indicate if the corresponding PCU relate to a `large user`, with more than 25 items per day',
+    pqi TINYINT(1) UNSIGNED NOT NULL COMMENT 'see the table `pqi` for descriptions of values',
+    Easting MEDIUMINT UNSIGNED NOT NULL COMMENT '1m grid reference North-wide using British National Grid (EPSG 27700) for Great Britain and Irish Grid (EPSG ) for N.Ireland',
+    Northing MEDIUMINT UNSIGNED NOT NULL COMMENT '1m grid reference East-wide using British National Grid (EPSG 27700) for Great Britain and Irish Grid (EPSG ) for N.Ireland',
+    x_lon DECIMAL(7,6) NOT NULL COMMENT 'Geographic longitude of the 1m Easting using the WGS84 Reference System (EPSG 4326)',
+    y_lat DECIMAL(8,6) UNSIGNED NOT NULL COMMENT 'Geographic latitude of the 1m Northing using the WGS84 Reference System (EPSG 4326)',
+    OA CHAR(9) NOT NULL COMMENT 'Output Area 2021 (EWN) + 2011 (S) (E00, W00, S00, N00)',
     OA11 CHAR(9) NOT NULL COMMENT 'Output Area 2011 (E00, W00, S00, N00)',
     RGN CHAR(9) NULL DEFAULT NULL COMMENT 'Region (E12; England Only)',
     CTRY CHAR(1) NOT NULL COMMENT 'Country (E92, W92, S92, N92)',
-    PCS CHAR(5) NULL DEFAULT NULL COMMENT 'PostCode Sector',
+    PCS CHAR(5) NULL DEFAULT NULL COMMENT 'PostCode Sector (see the table `postal` for the higher levels of the postal hierarchy)',
     WPZ CHAR(9) NOT NULL COMMENT 'Workplace Zone (E33, N19, S34, W35)',
     PRIMARY KEY (PCU),
     INDEX (is_active),
@@ -53,9 +54,9 @@ dd_create_dbtable('pqi', dbn, x, y)
 
 # OUTPUT AREAS --------------
 x <- "
-    OA CHAR(9) NOT NULL COMMENT 'Output Area (Census)',
-    LSOA CHAR(9) NOT NULL COMMENT 'Lower Layer Super Output Area (Census)',
-    MSOA CHAR(9) NULL DEFAULT NULL COMMENT 'Middle Layer Super Output Area (Census)',
+    OA CHAR(9) NOT NULL COMMENT 'Output Area (2021 Census for England, Wales, and N.Ireland; 2011 Census for Scotland)',
+    LSOA CHAR(9) NOT NULL COMMENT 'Lower Layer Super Output Area (2021 Census for England, Wales, and N.Ireland; 2011 Census for Scotland)',
+    MSOA CHAR(9) NULL DEFAULT NULL COMMENT 'Middle Layer Super Output Area (2021 Census for England and Wales; 2011 Census for Scotland; there are no MSOAs for N.Ireland)',
     PCS CHAR(5) NULL DEFAULT NULL COMMENT 'PostCode Sector (Postal)',
     PCD CHAR(4) NULL DEFAULT NULL COMMENT 'PostCode District (Postal)',
     PCT CHAR(5) NULL DEFAULT NULL COMMENT 'Post Town (internal code, see `pzones` for more info) (Postal)',

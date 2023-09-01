@@ -62,10 +62,38 @@ yw <- yw[!grepl('recoded', tolower(PCTn))]
 ng.lbl <- 'non-geo|special|po box|boxes|process'
 ng.pcd <- yw[grepl(ng.lbl, tolower(PCDd)) | grepl(ng.lbl, tolower(LAD)), .(PCD)]
 ng.pcd <- ng.pcd[!PCD %in% yw[PCD %in% ng.pcd$PCD, .N, PCD][N > 1, PCD]]
+ng.pcd <- rbindlist(list( ng.pcd, data.table(PCD = c('M61', 'M99', 'YO90')) ))
 yw <- yw[!PCD %in% ng.pcd$PCD]
 fwrite(ng.pcd, './data-raw/csv/pcd_non_geo.csv')
 
+message('- drop duplicated non true non-geographical')
+yw <- yw[!yw[, .I[LAD %like% 'non-geo' & (is.na(PCDd) | PCDd == 'PO Boxes')]]]
+
+message('- unite share PCD by different PCT')
 yw <- capitalize(yw, 'PCTn', as_factor = FALSE)
+ywd <- yw[PCD %in% yw[, .N, PCD][N > 1, PCD]]
+ywd <- ywd[, .(PCTn = paste(PCTn, collapse = '; ')), PCD][
+          ywd[, .(PCDd = paste(PCDd, collapse = ', ')), PCD], on = 'PCD'][
+              ywd[, .(LAD = head(LAD, 1)), PCD], on = 'PCD']
+yw <- rbindlist(list( yw[!PCD %in% ywd$PCD], ywd ))
+
+# Check PCD duplicates (==> PCT_joined): fix current, add new
+yj <- fread('./data-raw/wiki/PCT_joined.csv')
+yj <- yw[PCD %in% yw[,.N,PCD][N>1, PCD], .(PCD, PCTn)][yj,on = 'PCTn']
+View(yj[yw[PCD %in% yw[,.N,PCD][N>1, PCD], .(PCD, PCTn)], on = 'PCTn'][order(PCTj)])
+# ... check which must be done for yw and/or PCT_joined (==> https://en.wikipedia.org/wiki/File:XX_postcode_area_map.svg )
+# ===================
+yw[PCD == 'BR1', PCTn := 'Bromley North']
+yw[PCD == 'SY24' & PCTn == 'Talybont', PCTn := 'Talybont (SY)']
+yw[PCD == 'IP22', PCTn := 'Diss West']
+yw[PCD == 'IP23', PCTn := 'Eye West']
+yw[PCD == 'L20', PCDd := 'Bootle, Orrell, Kirkdale (Liverpool)']
+yw[PCD == 'PO12', PCDd := gsub('Gosport', 'Gosport South', PCDd)]
+yw[PCDd == 'Aberdyfi', PCTn := 'Aberdyfi']
+yw[PCTn == 'St Albans', PCTn := 'St. Albans']
+# ===================
+View(yj[yw[PCD %in% yw[,.N,PCD][N>1, PCD], .(PCD, PCTn)], on = 'PCTn'][order(PCTj)])
+
 yw <- rbindlist(list(
         yw,
         data.table( 
@@ -76,35 +104,7 @@ yw <- rbindlist(list(
         )
 )) |> setorder('PCD') |> setcolorder(c('PCD', 'PCDd'))
 
-# Check PCD duplicates (==> PCT_joined): fix current, add new
-yj <- fread('./data-raw/wiki/PCT_joined.csv')
-yj <- yw[PCD %in% yw[,.N,PCD][N>1, PCD], .(PCD, PCTn)][yj,on = 'PCTn']
-View(yj[yw[PCD %in% yw[,.N,PCD][N>1, PCD], .(PCD, PCTn)], on = 'PCTn'][order(PCTj)])
-# ... check which must be done for yw and/or PCT_joined (==> https://en.wikipedia.org/wiki/File:XX_postcode_area_map.svg )
-# ===================
-yw[PCD == 'BR1', PCTn := 'Bromley North']
-yw[PCD == 'SY24' & PCTn == 'Talybont', PCTn := 'Talybont (SY)']
-yw[PCD == 'WN8' & PCTn == 'Wigan', PCTn := 'Wigan North West']
-yw[PCD == 'IP22', PCTn := 'Diss West']
-yw[PCD == 'IP23', PCTn := 'Eye West']
-yw <- yw[!(PCD == 'DH8' & PCTn %in% c("Durham", "Stanley"))]
-yw <- yw[!(PCD == 'L20' & PCTn == 'Liverpool')]
-yw[PCD == 'L20', PCDd := 'Bootle, Orrell, Kirkdale (Liverpool)']
-yw <- yw[!(PCD == 'LL31' & PCTn == 'Conwy')]
-yw <- yw[!(PCD == 'NG17' & PCTn == 'Nottingham')]
-yw[PCD == 'NG17', PCDd := 'Sutton-in-Ashfield, Stanton Hill, Skegby, Kirkby-in-Ashfield (Nottingham)']
-yw <- yw[!(PCD == 'PO13' & PCTn == 'Gosport')]
-yw[PCD == 'PO13', PCDd := 'Lee-on-the-Solent, Gosport North']
-yw[PCD == 'PO12', PCDd := gsub('Gosport', 'Gosport South', PCDd)]
-yw <- yw[!(PCD == 'RH6' & PCTn == 'Gatwick')]
-yw[PCD == 'RH6', PCDd := 'Horley, Burstow, Smallfield, Gatwick Airport']
-yw <- yw[!(PCD == 'SO40' & PCTn == 'Lyndhurst')]
-yw[PCDd == 'Aberdyfi', PCTn := 'Aberdyfi']
-yw[PCTn == 'St Albans', PCTn := 'St. Albans']
-# ===================
-View(yj[yw[PCD %in% yw[,.N,PCD][N>1, PCD], .(PCD, PCTn)], on = 'PCTn'][order(PCTj)])
-
-message('- rename duplicated Town Names')
+message('- rename duplicated Town Names in different Areas')
 yw[, PCA := gsub('([A-Z]+).*', '\\1', PCD)]
 yw[PCTn %in% yt$PCTo, PCTn := paste0(PCTn, ' (', PCA, ')')]
 # Cross check these two views before proceeding any further
@@ -118,7 +118,7 @@ fwrite(pct, './data-raw/csv/PCT.csv')
 
 message('- create Postal Districts PCD table')
 pcd <- yw[, .(PCD, PCDd, PCTn)][pct, on = 'PCTn'][, PCTn := NULL]
-pcd <- pcd[, PCDn := as.numeric(regmatches(PCD, regexpr('[0-9]+', PCD)))][order(PCA, PCDn)][, ordering := 1:.N][, PCDn := NULL][]
+pcd <- pcd[, PCDn := as.numeric(regmatches(PCD, regexpr('[0-9]+', PCD)))][order(PCA, PCDn)][, ordering := 1:.N][, PCDn := NULL]
 fwrite(yw, './data-raw/csv/PCD.csv')
 
 message('DONE! Cleaning environment...')
